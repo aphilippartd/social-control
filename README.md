@@ -96,46 +96,46 @@ Now we want to code the execution logic of our lambda functions in our local com
    - `src/Handler`
 6. In each of those directories create an `index.mjs` file
 7. Let's head to the `src/Queuer/index.mjs` file and paste the following code:
-  ```js
-  import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs"
+    ```js
+    import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs"
 
-  const sqsClient = new SQSClient()
+    const sqsClient = new SQSClient()
 
-  export const handler = async (event) => {
-    const sqsInput = { QueueUrl: process.env.QUEUE_URL, MessageBody: event.body }
-    const sqsCommand = new SendMessageCommand(sqsInput)
-    await sqsClient.send(sqsCommand)
-    return {}
-  }
-  ```
-  This codes adds a message in the SQS queue. The message is the body of the API call made on the API gateway endpoint.
-6. Let's head to the `src/Handler/index.mjs` file and paste the following code:
-  ```js
-  import { SNSClient, PublishCommand } from "@aws-sdk/client-sns"
-  import { ComprehendClient, DetectSentimentCommand } from "@aws-sdk/client-comprehend"
-
-  export const handler = async (event) => {
-    const message = JSON.parse(event.Records[0].body)
-    
-    const comprehendInput = { Text: message.content, LanguageCode: "en" }
-    const comprehendClient = new ComprehendClient()
-    const comprehendCommand = new DetectSentimentCommand(comprehendInput)
-    const comprehendResponse = await comprehendClient.send(comprehendCommand)
-
-    console.log(`Sentiment is ${comprehendResponse.Sentiment}`)
-    if (comprehendResponse.Sentiment === "NEGATIVE") {
-      const snsInput = { Message: `ALERT: Hater message received from ${message.sender || "UNKNOWN HATER"} (ID: ${message.id})`, PhoneNumber: "+971505007832" }
-      const snsClient = new SNSClient()
-      const snsCommand = new PublishCommand(snsInput)
-      await snsClient.send(snsCommand)
-      console.log("SMS Sent")
+    export const handler = async (event) => {
+      const sqsInput = { QueueUrl: process.env.QUEUE_URL, MessageBody: event.body }
+      const sqsCommand = new SendMessageCommand(sqsInput)
+      await sqsClient.send(sqsCommand)
+      return {}
     }
+    ```
+    This codes adds a message in the SQS queue. The message is the body of the API call made on the API gateway endpoint.
+8. Let's head to the `src/Handler/index.mjs` file and paste the following code:
+    ```js
+    import { SNSClient, PublishCommand } from "@aws-sdk/client-sns"
+    import { ComprehendClient, DetectSentimentCommand } from "@aws-sdk/client-comprehend"
 
-    return {}
-  }
-  ```
-  This code extracts the message from SQS. It then makes a call to Amazon Comprehend to assess if the message is negative. If it is negative it sends a message to the phone number hard coded in this code snippet.
-  > NOTE: For testing purposes, you need to add your phone number to the SNS service before being able to send SMS messages to your phone number.
+    export const handler = async (event) => {
+      const message = JSON.parse(event.Records[0].body)
+      
+      const comprehendInput = { Text: message.content, LanguageCode: "en" }
+      const comprehendClient = new ComprehendClient()
+      const comprehendCommand = new DetectSentimentCommand(comprehendInput)
+      const comprehendResponse = await comprehendClient.send(comprehendCommand)
+
+      console.log(`Sentiment is ${comprehendResponse.Sentiment}`)
+      if (comprehendResponse.Sentiment === "NEGATIVE") {
+        const snsInput = { Message: `ALERT: Hater message received from ${message.sender || "UNKNOWN HATER"} (ID: ${message.id})`, PhoneNumber: "+971505007832" }
+        const snsClient = new SNSClient()
+        const snsCommand = new PublishCommand(snsInput)
+        await snsClient.send(snsCommand)
+        console.log("SMS Sent")
+      }
+
+      return {}
+    }
+    ```
+    This code extracts the message from SQS. It then makes a call to Amazon Comprehend to assess if the message is negative. If it is negative it sends a message to the phone number hard coded in this code snippet.
+    > NOTE: For testing purposes, you need to add your phone number to the SNS service before being able to send SMS messages to your phone number.
 
   ### Deploying our API
 
