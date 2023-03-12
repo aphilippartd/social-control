@@ -99,10 +99,9 @@ Now we want to code the execution logic of our lambda functions in our local com
     ```js
     import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs"
 
-    const sqsClient = new SQSClient()
-
     export const handler = async (event) => {
       const sqsInput = { QueueUrl: process.env.QUEUE_URL, MessageBody: event.body }
+      const sqsClient = new SQSClient()
       const sqsCommand = new SendMessageCommand(sqsInput)
       await sqsClient.send(sqsCommand)
       return {}
@@ -124,7 +123,7 @@ Now we want to code the execution logic of our lambda functions in our local com
 
       console.log(`Sentiment is ${comprehendResponse.Sentiment}`)
       if (comprehendResponse.Sentiment === "NEGATIVE") {
-        const snsInput = { Message: `ALERT: Hater message received from ${message.sender || "UNKNOWN HATER"} (ID: ${message.id})`, PhoneNumber: "+971505007832" }
+        const snsInput = { Message: `ALERT: Hater message received from ${message.sender || "UNKNOWN HATER"} (ID: ${message.id})`, PhoneNumber: "YOUR PHONE NUMBER" }
         const snsClient = new SNSClient()
         const snsCommand = new PublishCommand(snsInput)
         await snsClient.send(snsCommand)
