@@ -13,7 +13,7 @@ This repository contains a demo using AWS Application Composer and serverless te
 
 ## Architecture
 
-TODO
+![plot](./images/architecture.png)
 
 ## Reproduction steps
 
