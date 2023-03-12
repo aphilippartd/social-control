@@ -11,6 +11,28 @@ In order to proceed with the demo, you should have the following:
 
 This repository contains a demo using AWS Application Composer and serverless technologies. We will be building an API allowing you to post messages and get notified whenever a message is identified as negative.
 
+Our api should accept the following call:
+
+>  **URL** : `YOUR_API_ENDPOINT`
+>
+> **PATH**: `/`
+>
+>  **Method** : `POST`
+>
+>  **Auth** : `NONE`
+>
+>  **Headers**: `Content-Type: application/json`
+>
+>  **Body** :
+>
+>  ```json
+>    {
+>      "content": "I am not happy at all with your service.",
+>      "sender": "Angry Customer",
+>      "id": "as123kjsad21d032d3921031"
+>    }
+>  ```
+
 ## Architecture
 
 ![plot](./images/architecture.png)
@@ -168,4 +190,9 @@ Now we want to code the execution logic of our lambda functions in our local com
     }'
   ```
 
-  
+## Conclusion
+
+In this demo, we have built a basic API that covers our requirements. This is kept very basic for the sake of this demo. Many improvements can be added to this example such as:
+- Implementing API keys for API Gateway
+- Storing the messages in a DynamoDB table for long term persistance
+- ...
