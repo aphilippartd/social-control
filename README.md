@@ -46,56 +46,48 @@ In this demo we will start building an API. In order to do so, we will be levera
 1. Create a directory in which you wish to create your project on your local computer
 2. Head to the [Application Composer console](https://console.aws.amazon.com/composer/home)
 3. Click on **create project**
-4. Select **New Blank Project**
-5. Select **Connected**
-6. Select the your local directory
-7. Click **Create**
-8. Drag and drop an API Gateway resource into the canvas
-9. Click on the resource, then details and call it **SocialHaterAPI**
-10. Change the method from GET to POST
-11. Click save 
+4. Click on **Menu** and **Activate local sync**
+5. Select the local directory you have created in point 1
+6. Drag and drop an API Gateway resource into the canvas
+7. Click on the resource, then details and call it **SocialHaterAPI**
+8.  Change the method from GET to POST
+9.  Click save 
     ![plot](./images/infra/1.png)
-12. Drag and drop a Lambda resource into the canvas
-13. Change the logical ID to **SocialHaterQueuer**
-14. Change the source path to **src/Queuer**
-15. Click save
-    ![plot](./images/infra/2.png)
-16. Link the POST method of **SocialHaterAPI** with **SocialHaterQueuer**
-17. Drag and drop an SQS Queue resource in the canvas
-18. Change the logical ID to **SocialHaterQueue**
-19. Click save
-  ![plot](./images/infra/3.png)
-20. Link **SocialHaterQueuer** with **SocialHaterQueue**
-21. Drag and drop a Lambda resource into the canvas
-22. Change the logical ID to **SocialHaterHandler**
-23. Change the source path to **src/Handler**
-24. Click save
-  ![plot](./images/infra/4.png)
-25. Link Subscription of the **SocialHaterQueue** with **SocialHaterHandler**
-  [plot](./images/infra/5.png)
-26. Click on the **SocialHaterHandler** resource details and scroll down to **Permissions**
-27. Paste the following code
-    ```yaml
-    - Statement:
-        - Effect: Deny
-          Action:
-            - sns:Publish
-          Resource: arn:aws:sns:*:*:*
-        - Effect: Allow
-          Action:
-            - sns:Publish
-          Resource: '*'
-    - Statement:
-        - Effect: Allow
-          Action:
-            - comprehend:DetectSentiment
-          Resource: '*'
-    ```
-    These policies will:
-      1. Allow the lambda function to send SMS through the Amazon SNS service (but not to acces any topic)
-      2. Allow the lambda to perform the DetectSentiment command on Amazon Comprehend
-28. Click save
-    ![plot](./images/infra/6.png)
+10. Drag and drop an SQS Queue resource in the canvas
+11. Change the logical ID to **SocialHaterQueue**
+12. Click save
+13. Link **SocialHaterQueuer** with **SocialHaterQueue**
+![plot](./images/infra/2.png)
+14. Drag and drop a Lambda resource into the canvas
+15. Change the logical ID to **SocialHaterHandler**
+16. Click save
+17. Link Subscription of the **SocialHaterQueue** with **SocialHaterHandler**
+  [plot](./images/infra/3.png)
+18. Click on the **SocialHaterHandler** resource details and scroll down to **Permissions**
+19. Paste the following code
+  ```yaml
+  - Statement:
+      - Effect: Deny
+        Action:
+          - sns:Publish
+        Resource: arn:aws:sns:*:*:*
+      - Effect: Allow
+        Action:
+          - sns:Publish
+        Resource: '*'
+  - Statement:
+      - Effect: Allow
+        Action:
+          - comprehend:DetectSentiment
+        Resource: '*'
+  ```
+
+
+  > These policies will:
+  >  1. Allow the lambda function to send SMS through the Amazon SNS service (but not to acces any topic)
+  >  2. Allow the lambda to perform the DetectSentiment command on Amazon Comprehend
+20.  Click save
+    ![plot](./images/infra/4.png)
 
 
 ### Define lambda execution logic
@@ -112,47 +104,33 @@ Now we want to code the execution logic of our lambda functions in our local com
         Value: !Sub "https://${SocialHaterAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
     ```
     This change will make sure that everytime you deploy your application with SAM, the API Gateway endpoint will be displayed.
-4. Remove the files and folders in the `src` directory
-5. Create two directories in the `src` directory:
-   - `src/Queuer`
-   - `src/Handler`
-6. In each of those directories create an `index.mjs` file
-7. Let's head to the `src/Queuer/index.mjs` file and paste the following code:
-    ```js
-    import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs"
-
-    export const handler = async (event) => {
-      const sqsInput = { QueueUrl: process.env.QUEUE_URL, MessageBody: event.body }
-      const sqsClient = new SQSClient()
-      const sqsCommand = new SendMessageCommand(sqsInput)
-      await sqsClient.send(sqsCommand)
-      return {}
-    }
-    ```
-    This codes adds a message in the SQS queue. The message is the body of the API call made on the API gateway endpoint.
-8. Let's head to the `src/Handler/index.mjs` file and paste the following code:
+4. Ιn the `src/Function` directory, change the extension of the the `index.js` file to `index.mjs`
+5. Let's head to the `src/Function/index.mjs` file and paste the following code:
     ```js
     import { SNSClient, PublishCommand } from "@aws-sdk/client-sns"
     import { ComprehendClient, DetectSentimentCommand } from "@aws-sdk/client-comprehend"
 
     export const handler = async (event) => {
-      const message = JSON.parse(event.Records[0].body)
-      
+      await Promise.all(event.Records.map(record => {
+        const message = JSON.parse(record.body).data
+        return handleMessage(message)
+      }))
+    }
+
+    const handleMessage = async (message) => {
       const comprehendInput = { Text: message.content, LanguageCode: "en" }
       const comprehendClient = new ComprehendClient()
       const comprehendCommand = new DetectSentimentCommand(comprehendInput)
       const comprehendResponse = await comprehendClient.send(comprehendCommand)
-
+      
       console.log(`Sentiment is ${comprehendResponse.Sentiment}`)
       if (comprehendResponse.Sentiment === "NEGATIVE") {
-        const snsInput = { Message: `ALERT: Hater message received from ${message.sender || "UNKNOWN HATER"} (ID: ${message.id})`, PhoneNumber: "YOUR PHONE NUMBER" }
+        const snsInput = { Message: `ALERT: Hater message received from ${message.sender || "UNKNOWN HATER"} (ID: ${message.id})`, PhoneNumber: "YOUR_PHONE_NUMBER" }
         const snsClient = new SNSClient()
         const snsCommand = new PublishCommand(snsInput)
         await snsClient.send(snsCommand)
         console.log("SMS Sent")
       }
-
-      return {}
     }
     ```
     This code extracts the message from SQS. It then makes a call to Amazon Comprehend to assess if the message is negative. If it is negative it sends a message to the phone number hard coded in this code snippet.
@@ -166,10 +144,9 @@ Now we want to code the execution logic of our lambda functions in our local com
   2. Run `sam deploy --guided`
    This command will ask for some information regarding your deployment, you can fill the values in as follows:
    ![plot](./images/deploy/1.png)
-   > Note: It will warn you that **SocialHaterQueuer** has no Authorization defined. Explicetely allow it for the sake of this demo.
   3. At the end of your deployment results, you should be able to find the outputs that should look like this:
   ![plot](./images/deploy/2.png)
-  Copy the API endpoint and test your api with the following command
+  4. Copy the API endpoint and test your api with the following command
   ```sh
     curl --location 'API_ENDPOINT' \
     --header 'Content-Type: application/json' \
@@ -179,7 +156,7 @@ Now we want to code the execution logic of our lambda functions in our local com
         "id": "Angry ID"
     }'
   ```
-  Copy the API endpoint and test your api with the following command
+  5. Copy the API endpoint and test your api with the following command
   ```sh
     curl --location 'API_ENDPOINT' \
     --header 'Content-Type: application/json' \
