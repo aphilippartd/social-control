@@ -1,4 +1,4 @@
-# Social Hater Demo
+# Social Control Demo
 
 ## Prerequisites
 
@@ -49,21 +49,21 @@ In this demo we will start building an API. In order to do so, we will be levera
 4. Click on **Menu** and **Activate local sync**
 5. Select the local directory you have created in point 1
 6. Drag and drop an API Gateway resource into the canvas
-7. Click on the resource, then details and call it **SocialHaterAPI**
+7. Click on the resource, then details and call it **SocialControlApi**
 8.  Change the method from GET to POST
 9.  Click save 
     ![plot](./images/infra/1.png)
 10. Drag and drop an SQS Queue resource in the canvas
-11. Change the logical ID to **SocialHaterQueue**
+11. Change the logical ID to **SocialControlQueue**
 12. Click save
-13. Link **SocialHaterQueuer** with **SocialHaterQueue**
+13. Link **SocialControlQueuer** with **SocialControlQueue**
 ![plot](./images/infra/2.png)
 14. Drag and drop a Lambda resource into the canvas
-15. Change the logical ID to **SocialHaterHandler**
+15. Change the logical ID to **SocialControlHandler**
 16. Click save
-17. Link Subscription of the **SocialHaterQueue** with **SocialHaterHandler**
+17. Link Subscription of the **SocialControlQueue** with **SocialControlHandler**
   [plot](./images/infra/3.png)
-18. Click on the **SocialHaterHandler** resource details and scroll down to **Permissions**
+18. Click on the **SocialControlHandler** resource details and scroll down to **Permissions**
 19. Paste the following code
   ```yaml
   - Statement:
@@ -101,7 +101,7 @@ Now we want to code the execution logic of our lambda functions in our local com
     Outputs:
       MvpStoriesApi:
         Description: "API Gateway endpoint URL for Prod stage"
-        Value: !Sub "https://${SocialHaterAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+        Value: !Sub "https://${SocialControlApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
     ```
     This change will make sure that everytime you deploy your application with SAM, the API Gateway endpoint will be displayed.
 4. Ιn the `src/Function` directory, change the extension of the the `index.js` file to `index.mjs`
@@ -125,7 +125,7 @@ Now we want to code the execution logic of our lambda functions in our local com
       
       console.log(`Sentiment is ${comprehendResponse.Sentiment}`)
       if (comprehendResponse.Sentiment === "NEGATIVE") {
-        const snsInput = { Message: `ALERT: Hater message received from ${message.sender || "UNKNOWN HATER"} (ID: ${message.id})`, PhoneNumber: "YOUR_PHONE_NUMBER" }
+        const snsInput = { Message: `ALERT: Angry customer message received from ${message.sender} (ID: ${message.id})`, PhoneNumber: "YOUR_PHONE_NUMBER" }
         const snsClient = new SNSClient()
         const snsCommand = new PublishCommand(snsInput)
         await snsClient.send(snsCommand)
